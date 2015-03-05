@@ -1,0 +1,145 @@
+
+
+//portide konf
+ ldi r16, 0xff  //aktivacija vseh vihodov_portov
+ out ddrd, r16
+ out ddrb, r16
+  ldi r17, 0
+ out ddrc, r17
+  
+ //chistka registrov
+ ldi r16, 0xff
+ out portd, r16
+ ldi r16, 0b1000_0011
+ out portb, r16
+ ldi r16, 0b0000_0000
+ out portb, r16
+ ldi r16, 0x00
+ out portd, r16
+ sbi portb, 6       
+cbi portb, 6
+
+clr r25  //chistim registr r25
+
+Knopki:
+ldi r16, 0b1011_1111                        ;registrisse r16 pannakse number 0xfe ehk 0b1111111
+out portd, r16         
+nop
+in r17, pinc                       ;port c sisendis olev info pannakse registrisse r17
+andi r17, 0x04                   ;registri r17 sisule tehakse and tehe numbriga 00000010, selline mask                                       ;vхimaldab kontrollida ainult PC1 sisendit
+breq tuletamine
+
+ldi r16, 0b1011_1111
+out portd, r16      
+nop
+in r17, pinc
+andi r17, 0x02 
+breq tuletamine2
+
+rjmp Knopki
+
+tuletamine:
+cpi r25, 0//kollane on off
+breq relee1ON
+cpi r25, 32//kollane on off
+breq relee12ON
+cpi r25, 64 
+breq relee1OFF
+cpi r25, 96
+breq relee11OFF
+
+rjmp Knopki
+
+tuletamine2:
+cpi r25, 0
+breq relee2ON
+cpi r25, 64 
+breq relee12ON
+cpi r25, 32
+breq relee2OFF   //esli pd5 
+cpi r25, 96
+breq relee22OFF
+rjmp knopki
+
+relee1ON:
+ldi r25, 64
+out portd, r25
+rcall relay
+rcall aeg
+rjmp knopki
+
+relee1OFF:
+ldi r25, 0
+out portd, r25
+rcall relay
+rcall aeg
+rjmp knopki
+///////
+relee12ON: //2 rele ON
+ldi r25, 96
+out portd, r25
+rcall relay
+rcall aeg
+rjmp knopki
+
+relee11OFF:  //esli oba bili vkljucheni i nazimaem knopku 1 to vikl tolko 1
+ldi r25, 32
+out portd, r25
+rcall relay
+rcall aeg
+rjmp knopki
+
+relee22OFF:  //esli oba bili vkljucheni i nazimaem knopku 2 to vikl tolko 2
+ldi r25, 64
+out portd, r25
+rcall relay
+rcall aeg
+rjmp knopki
+//////
+
+relee2ON:  // vkljuchaem tolko 2 rele
+ldi r25, 32
+out portd, r25
+rcall relay
+rcall aeg
+rjmp knopki
+
+relee2OFF: //vikljuchaem oba rele
+ldi r25, 0
+out portd, r25
+rcall relay
+rcall aeg
+rjmp knopki
+
+ relay:
+sbi portb, 6       
+cbi portb, 6
+ret         
+ 
+ aeg:
+; ============================= 
+;    delay loop generator 
+;     1000000 cycles:
+; ----------------------------- 
+; delaying 999999 cycles:
+          ldi  R17, $09
+WGLOOP0:  ldi  R18, $BC
+WGLOOP1:  ldi  R19, $C4
+WGLOOP2:  dec  R19
+          brne WGLOOP2
+          dec  R18
+          brne WGLOOP1
+          dec  R17
+          brne WGLOOP0
+; ----------------------------- 
+; delaying 1 cycle:
+          nop
+; ============================= 
+
+ret //vozvrashenie nazad return
+
+
+  
+
+
+  
