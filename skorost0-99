@@ -1,0 +1,119 @@
+//Segm 0-99 vkljuchenie cherez knopku 1 s klaviaturu
+
+.DEF A       = R16
+ .DEF AH      = R17
+
+//portide konf
+ ldi r16, 0xff  //aktivacija vseh vihodov_portov
+ out ddrd, r16
+ out ddrb, r16
+  ldi r17, 0
+ out ddrc, r17
+
+
+ ldi   A,0b1110_0011  ;[ADEN,ADSC,ADATE,ADIF,_,ADIE,ADPS2,ADPS1,ADPS0]
+sts   ADCSRA,A       ;START ANALOG TO DIGITAL CONVERSION
+ldi   A,0b0000_0011  ;SELECT ADC #3 (PORT C 3)
+sts   ADMUX,A
+
+//chistka registrov
+ ldi r16, 0xff
+ out portd, r16
+ ldi r16, 0b1000_0011
+ out portb, r16
+ ldi r16, 0b0000_0000
+ out portb, r16
+  
+ ;----------Tabel---------------------------------------------------------------------------------
+ 
+rjmp Knopki            ;pereprigivaet cherez tablicu  hьpatakse programmis kohta nimega Algus, tabel jдetakse programmi tдitmisel vahele
+ 
+Tabel:                  ;mдrgend programmis, mille jдrgi on vхimalik pццrduda siia kohta programmis ja siin                              
+.db ~0x3F,~0x06,~0x5b,~0x4f,~0x66,~0x6d,~0x7d,~0x07,~0x7f,~0x6f,0,0    ;dolzno bit parami  tabeli sisu
+ 
+;-----------sьmbolite vхtmine tabelist------------------------------------------------------
+Knopki:
+ldi r16, 0b1011_1111                        ;registrisse r16 pannakse number 0xfe ehk 0b1111111
+out portd, r16         
+nop
+in r17, pinc                       ;port c sisendis olev info pannakse registrisse r17
+andi r17, 0x04                   ;registri r17 sisule tehakse and tehe numbriga 00000010, selline mask                                       ;vхimaldab kontrollida ainult PC1 sisendit
+breq Algus
+rjmp Knopki
+
+ //desjatki  levii segment
+Algus:                   
+ 
+ldi r31, high(Tabel<<1)  ;registrisse r31 pannakse tabeli alguse aadressi kaheksa vanemat bitti
+ldi r30, low(Tabel<<1)   ;registrisse r30 pannakse tabeli alguse aadressi kaheksa nooremat bitti
+                                ;nььd on registris Z tabeli alguse aadress
+Tsykkel:                   
+lpm r16, z+                ;v registre z dannie pomishjajutsja v reg r16 r16 Rd<(Z), Z<Z+1
+cpi r16,0                    ;sravnivaetsja r16 s 0,                                  
+breq Knopki // Algus2                   ;esli bred sravnenie bilo ravno togda prigaet v Algus2                              
+out portd, r16             ;esli net to vivodim na portd dannie s reg r16
+rcall segment1            
+
+push r31    //stop pamjati
+push r30
+
+ //pravii segment
+ Algus2:                   ;mдrgend programmis, mille jдrgi on vхimalik pццrduda siia kohta programmis
+ 
+ldi r31, high(Tabel<<1)  ;registrisse r31 pannakse tabeli alguse aadressi kaheksa vanemat bitti
+ldi r30, low(Tabel<<1)   ;registrisse r30 pannakse tabeli alguse aadressi kaheksa nooremat bitti
+                                ;nььd on registris Z tabeli alguse aadress
+tsikl2:
+lpm r16, z+                ;registris z olevalt aadressilt vхetakse andmed ja pannakse registrisse r16 Rd<(Z), Z<Z+1
+cpi r16,0                  ;vхrreldakse registri r16 sisu numbriga 0, kui r16 sisu on vхrdne nulliga, siis                                 ;pannakse staatusregistris nulli lipp ьheks, kui r16 pole vхrdne nulliga on                                 ;staatusregistris nulli lipu vддrtus null
+breq memmo                  // vizivaem memmo pamjat ;kui eelmise tehte tulemus oli null, siis hьpatakse kohta nimega Loop, kui                                 ;eelmise tehte tulemus polnud null, siis minnakse jдrgmist kдsku tдitma
+out portd, r16             ;registri r16 sisu saadetakse port D vдljundisse
+rcall segment2            ;kutsutakse vдlja alamprogramm nimega EnableNr1, E signaali andmiseks
+rcall aeg      
+rjmp tsikl2
+
+ Memmo:
+ pop r30  //vozvrashaem iz pamjati
+ pop r31
+ rjmp Tsykkel
+
+segment1:          //levii segm
+sbi portb, 1       
+cbi portb, 1
+ret         
+
+segment2:          //pravii segm
+sbi portb, 0       
+cbi portb, 0         
+ret
+
+ aeg:
+
+ lds A, ADCL         ;MUST READ ADCL BEFORE ADCH
+ lds AH, ADCH        ;REQUIRED, THOUGH NOT USED
+  
+; ============================= 
+;    delay loop generator 
+;     1000000 cycles:
+; ----------------------------- 
+; delaying 999999 cycles:
+          mov  R18, AH
+WGLOOP0:  ldi  R19, 0x5e
+WGLOOP1:  mov  R20, A
+WGLOOP2:  dec  R20
+          brne WGLOOP2
+          dec  R19
+          brne WGLOOP1
+          dec  R18
+          brne WGLOOP0
+; ----------------------------- 
+; delaying 1 cycle:
+          nop
+; ============================= 
+ret //vozvrashenie nazad return
+
+
+  
+
+
+  
