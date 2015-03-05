@@ -1,0 +1,135 @@
+
+MainRida: .db "Hello World",0
+;esimese rea tekst
+SecondRida: .db "Name",0
+;teise rea tekst
+
+ALGUS:
+;Portide konfigureerimine
+     ldi r16,0xC7    ;1100 0111
+     out DDRB,r16    ;PB5,4,3 sisse, ьlejддnud vдlja
+     ldi r16,0xF0    ;1111 0000
+     out DDRC,r16    ;PC3-0 sisse, ьlejддnud vдlja
+     ldi r16,0xFF    ;1111 1111
+     out DDRD,r16    ;PD kхik jдrgud vдlja
+     rcall LCD_INIT  ;LCD tabloo kдima
+ 
+;Et teksti saata LCD'le, paigutada teksti aadressid Z-registri algusesse ja lхppu
+;Siis kutsuda vдlja LCD_TEXT, mis vхtab informatsiooni Z registrist, ja kuvab selle ekraanil.
+alg1: 
+rcall LCD_CLR
+;MainRida ekraanile + tьhjendab read
+    ldi r31, High(MainRida<<1)
+;Z-register high=0
+    ldi r30, low(MainRida<<1)
+;Z-register low
+    rcall LCD_TEXT  ;lдheb kirjutab vдja mis Mainrida sisaldab
+    rcall w1s ;1ms ajaline viide sest se on LCD
+                      
+    rcall LCD_CLR  ;tьhjendab read
+    rcall LCD_AD40  ;valib teise rea kuhu kirjutada
+    ldi r31, High(SecondRida<<1)    ;Z-register high=0
+    ldi r30, low(SecondRida<<1)     ;Z-register low
+    rcall LCD_TEXT  ;lдheb kirjutab vдlja mis secondrida sisaldab
+    rcall w1s
+rjmp ALGUS
+ 
+LCD_TEXT:;ASCII tekst LCD-le
+  ltx1:     
+lpm r16,Z
+;teksti viit: Z on r30 ja r31
+    inc r30 ;suurendab Z 1 vхrra ehk vхtab ette uue tдhe
+    tst r16 ;kontrollib nulli vхi miinust
+    breq ltx2 ;hьppab ltx2 kui eelnev vastus on null
+    rcall lcdD ;kirjutab vдlja praeguse tдhe ASCII-na
+rcall w20ms
+;ajaline viide et iga tдhe jдrgi tehakse 20ms paus
+    rjmp ltx1 ;hьppab programmi algusese
+
+  ltx2: ;lдheb algese kohta kus recal toimus
+ret
+
+  LCD_INIT:;kдivitab LCD tabloo
+    rcall w20ms                                  ;LCD tabloo reageerimisaeg, min.30ms
+    rcall w20ms 
+    ldi r16,0b00111000 ;FUNCTION SET:2-line, on, display on, 5x8 dots
+    rcall lcdI
+    ldi r16,0b00001100 ;DSP.ON/OFF: display on, cursor off, nonblink
+    rcall lcdI
+    ldi r16,0b00000001 ;CLEAR DISPLAY
+    rcall lcdI
+    ldi r16,0b00000110 ;ENTRY MODE: increment on, shift off
+    rjmp lcdI
+ 
+
+LCD_CLR:;LCD kustutus
+    ldi r16,0b00000001  ;CLEAR DISPLAY
+    rcall lcdI ;lдheb aktiveerib LCD
+    rcall w20ms  ;20ms ajaline viide
+ret
+ 
+                                ;LCD-le kдsu kirjutamine, PB2=RS=0
+lcdI: ;aktiveerib LCD 
+out PORTD,r16     
+    sbi PORTC,5 ;E kхrgeks
+    nop
+    cbi PORTC,5 ;E madalaks tagasi
+    rcall w1ms  ;1ms ajaline viide
+    ret                        
+       ;LCD-le data kirjutamine, PB2=RS=1
+lcdD: 
+out PORTD,r16
+    sbi PORTB,2  ;RS kхrgeks
+    sbi PORTC,5  ;E kхrgeks
+    nop
+    cbi PORTC,5  ;E madalaks tagasi
+    cbi PORTB,2  ;RS madalaks tagasi
+    rcall w1ms
+ret
+
+LCD_AD40: ;LCD kursor teise rea algusesse
+ldi r16,0b11000000
+;DDRAM ADR=0x40
+rjmp lcdI
+ 
+
+
+w1s: ;1 sekund
+
+          ldi  R17, $09
+WGLOOP0:  ldi  R18, $BC
+WGLOOP1:  ldi  R19, $C4
+WGLOOP2:  dec  R19
+          brne WGLOOP2
+          dec  R18
+          brne WGLOOP1
+          dec  R17
+          brne WGLOOP0
+          nop
+    ret
+                                
+w20ms: ;20 milli sekundit
+
+          ldi  R17, $06
+WGLOOP3:  ldi  R18, $37
+WGLOOP4:  ldi  R19, $C9
+WGLOOP5:  dec  R19
+          brne WGLOOP5
+          dec  R18
+          brne WGLOOP4
+          dec  R17
+          brne WGLOOP3
+          nop
+          nop
+    ret
+                            
+w1ms:  ;1milli sekund
+
+          ldi  R17, $21
+WGLOOP6:  ldi  R18, $64
+WGLOOP7:  dec  R18
+          brne WGLOOP7
+          dec  R17
+          brne WGLOOP6
+          nop
+    ret
