@@ -1,0 +1,28 @@
+
+ ldi r16, 0xff
+ out ddrb, r16
+ out ddrd, r16
+ ldi r17, 0
+ out ddrc, r17
+
+ ldi r16, 0xff
+ out portd, r16
+ ldi r16, 0b1000_0011
+  out portb, r16
+  ldi r16, 0
+  out portb, r16
+
+ 
+ /*
+ ldi r16, 0
+ out portd, r16
+
+ ldi r16, 0b1000_0011
+ out portb, r16
+ */
+// ldi r16, 255 
+clr r16
+  out portd, r16
+  sbi portb, 6
+  cbi portb, 6
+  
